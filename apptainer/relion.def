@@ -1,0 +1,130 @@
+BootStrap: docker
+From: nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04
+
+# From: https://github.com/3dem/relion/issues/1006
+
+%post
+  ### Set up Ubuntu ###
+  # for localtime WARNING
+  touch /etc/localtime
+
+  export CONDA_VERSION=25.3.1-0
+
+  export RELION_TAG=5.0.0
+
+  # Install RELION dependent packages
+  apt update && apt upgrade -y
+  apt install -y \
+    build-essential gcc-9 g++-9 cmake git curl mpi-default-bin mpi-default-dev \
+    libtiff-dev libpng-dev ghostscript libxft-dev libgl1-mesa-dev
+
+  # Add en_US.UTF-8 to locale
+  apt install -y locales
+  locale-gen en_US.UTF-8
+
+  # Clean up apt
+  rm -rf /var/lib/apt/lists/* && apt autoremove -y && apt clean
+
+  # Default to gcc-9 and g++-9
+  update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 99
+  gcc --version
+  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 99
+  g++ --version
+
+  ### Install CTFFIND-4.1.14 ###
+  # Prepare the installation directory
+  mkdir -p /usr/local/apps/ctffind-4.1.14
+  cd /usr/local/apps/ctffind-4.1.14
+
+  # Download CTFFIND
+  DL_URL='https://grigoriefflab.umassmed.edu/system/tdf?path=ctffind-4.1.14-linux64.tar.gz&file=1&type=node&id=26'
+  curl -L ${DL_URL} -o ./ctffind-4.1.14-linux64.tar.gz
+
+  # Extract and then remove the downloaded .tar.gz file
+  tar -xvf ./ctffind-4.1.14-linux64.tar.gz
+  rm -f ./ctffind-4.1.14-linux64.tar.gz
+
+  ### Install python libraries for RELION                       ###
+  ### Blush, DynaMight, Model-Angelo, Classranker, Topaz, etc.) ###
+  # Install Pyenv to /usr/local/apps
+  git clone https://github.com/yyuu/pyenv.git /usr/local/apps/pyenv
+  export PYENV_ROOT="/usr/local/apps/pyenv"
+  export PATH="${PYENV_ROOT}/bin:${PATH}"
+
+  # Install Miniforge through Pyenv
+  pyenv install --list
+  pyenv install miniforge3-$CONDA_VERSION
+  pyenv global miniforge3-$CONDA_VERSION
+  pyenv versions
+  # Activate the environment of installed Miniforge
+  export MINIFORGE3_ROOT="${PYENV_ROOT}/versions/miniforge3-$CONDA_VERSION"
+  export PATH="${MINIFORGE3_ROOT}/bin:${PATH}"
+
+  # Update conda
+  conda update -n base conda
+
+  # Clone RELION (ver. ${RELION_TAG}) repository to /usr/local/apps/relion-git
+  git clone --depth 1 --branch ${RELION_TAG} https://github.com/3dem/relion.git /usr/local/apps/relion-git
+  cd /usr/local/apps/relion-git
+  # Modify the environment.yml to use only conda-forge
+  sed -i.bak -e 's|name: relion-5.0|name: relion-conda|g' ./environment.yml
+  sed '/- defaults/d' ./environment.yml
+
+  # Create a conda environment for RELION (relion-conda)
+  conda env create -f ./environment.yml
+  # Clean up conda
+  conda clean --all --force-pkgs-dirs --yes
+
+  # Activate the relion-conda
+  export RELION_CONDA="${MINIFORGE3_ROOT}/envs/relion-conda"
+  export PATH="${RELION_CONDA}/bin:${PATH}"
+  export LD_LIBRARY_PATH="${RELION_CONDA}/lib:${LD_LIBRARY_PATH}"
+  # Check the list of installed libraries
+  conda list -n relion-conda
+
+  ### Install RELION (ver. ${RELION_TAG}) ###
+  # Prepare directories for RELION build
+  mkdir -p /usr/local/apps/relion-git/build
+  mkdir -p /usr/local/apps/torch/home
+  export TORCH_HOME="/usr/local/apps/torch/home"
+
+  cd /usr/local/apps/relion-git/build
+
+  # Install RELION to /usr/local/apps/relion-v${RELION_TAG}
+  # Add -DAMDFFTW=ON to the following (if AMD CPU)
+  cmake \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_INSTALL_PREFIX="/usr/local/apps/relion-v${RELION_TAG}" \
+    -DFORCE_OWN_FFTW=ON -DFORCE_OWN_FLTK=ON \
+    -DPYTHON_EXE_PATH="${RELION_CONDA}/bin/python" \
+    -DTORCH_HOME_PATH="${TORCH_HOME}" \
+    ..
+  make -j8 && make install
+
+%environment
+  export CONDA_VERSION=25.3.1-0
+  export RELION_TAG=5.0.0
+
+  # For OpenMPI
+  export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu/openmpi/lib:${LD_LIBRARY_PATH}"
+
+  # For RELION
+  export RELION_HOME="/usr/local/apps/relion-v${RELION_TAG}"
+  export PATH="${RELION_HOME}/bin:${PATH}"
+  export LD_LIBRARY_PATH="${RELION_HOME}/lib:${LD_LIBRARY_PATH}"
+
+  # For Blush, DynaMight, Model-Angelo, Classranker, Topaz, etc.
+  export MINIFORGE3_ROOT="/usr/local/apps/pyenv/versions/miniforge3-$CONDA_VERSION"
+  export RELION_CONDA="${MINIFORGE3_ROOT}/envs/relion-conda"
+  export PATH="${RELION_CONDA}/bin:${PATH}"
+  export TORCH_HOME="/usr/local/apps/torch/home"
+
+  # Default CTFFIND-4.1+ executable
+  export RELION_CTFFIND_EXECUTABLE="/usr/local/apps/ctffind-4.1.14/bin/ctffind"
+
+  # The default scratch directory in the GUI
+  # (depends on your environment outside this container)
+  export RELION_SCRATCH_DIR="/scratch"
+
+%runscript
+  "$@"

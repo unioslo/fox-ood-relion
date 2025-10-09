@@ -1,0 +1,12 @@
+---
+name: Relion
+category: Interactive Apps
+subcategory: GUIs
+role: batch_connect
+description: |
+  This app will launch a [Relion] GUI on Fox. You will be able
+  to interact with it through a VNC session.
+
+  [Relion]: https://relion.readthedocs.io/
+tile:
+  sub_caption: "Image-processing software for cryo-electron microscopy"
