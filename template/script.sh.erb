@@ -60,4 +60,4 @@ ssh -X -o BatchMode=yes -o StrictHostKeyChecking=no $HOSTNAME \
   apptainer exec --nv \
   -B "$HOME,/cluster,/fp/projects01/<%= context.auto_accounts %>,<%= context.relion_workdir %>,/tmp,/node,/localscratch,/etc/profile.d,/projects,/etc/ssh/ssh_config.d" \
   /cluster/opt/OOD/fox-relion-<%= context.relion_version %>.sif \
-  relion'
+  relion --idle 604800'
