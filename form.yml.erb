@@ -5,11 +5,11 @@ form:
   - auto_accounts
   - ec_mail_on_start
   - global_fox_alacarte
-  - relion_version
-  - relion_workdir
   - ec_mem
   - ec_cpus
   - ec_gpus
+  - relion_version
+  - relion_workdir
   - bc_num_hours
   - ec_modules
 
@@ -28,19 +28,6 @@ attributes:
 
 <%= FormTemplate.fox_alacarte %>
 
-  relion_version:
-    label: "Relion version:"
-    widget: "select"
-    options:
-      - [ "5.0.0", "5.0.0" ]
-
-  relion_workdir:
-    widget: "path_selector"
-    label: "Working Directory"
-    data-target-file-type: dirs  # Valid values are: files, dirs, or both
-    readonly: false
-    help: "<small>Select your Relion project directory</small>"
-
   ec_cpus:
     label: "Number of CPU cores:"
     widget: "number_field"
@@ -58,6 +45,19 @@ attributes:
     value: "1"
     widget: "number_field"
     required: true
+
+  relion_version:
+    label: "Relion version:"
+    widget: "select"
+    options:
+      - [ "5.0.0", "5.0.0" ]
+
+  relion_workdir:
+    widget: "path_selector"
+    label: "Working Directory"
+    data-target-file-type: dirs  # Valid values are: files, dirs, or both
+    readonly: false
+    help: "<small>Select your Relion project directory</small>"
 
   bc_num_hours:
     label: "Runtime (in hours) (required)"
